@@ -9,3 +9,8 @@ body {
   background: #f8fafc;
   color: #172b4d;
 }
+.auth-error {
+  color: #dc2626;
+  font-size: 14px;
+  margin: 8px 0;
+}

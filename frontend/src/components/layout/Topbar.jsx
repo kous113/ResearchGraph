@@ -1,8 +1,14 @@
 
 import { Search, Bell, ChevronDown, UserRound } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
 import "../../styles/topbar.css";
 
 function Topbar() {
+  const { user } = useAuth();
+
+  const fullName = user?.fullName || "Researcher";
+  const email = user?.email || "Student Account";
+
   return (
     <header className="topbar">
       <div className="topbar-search">
@@ -27,8 +33,8 @@ function Topbar() {
           </div>
 
           <div className="profile-info">
-            <span className="profile-name">Researcher</span>
-            <span className="profile-role">Student Account</span>
+            <span className="profile-name">{fullName}</span>
+            <span className="profile-role">{email}</span>
           </div>
 
           <ChevronDown size={17} />

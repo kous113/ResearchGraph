@@ -1,5 +1,5 @@
 
-import { NavLink, Link } from "react-router-dom";
+import { NavLink, Link, useNavigate } from "react-router-dom";
 import {
   Network,
   LayoutDashboard,
@@ -13,9 +13,18 @@ import {
   LogOut,
 } from "lucide-react";
 
+import { useAuth } from "../../context/AuthContext";
 import "../../styles/sidebar.css";
 
 function Sidebar() {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    window.location.replace("/");
+  };
+
   return (
     <aside className="sidebar">
       <Link to="/" className="sidebar-logo">
@@ -72,7 +81,11 @@ function Sidebar() {
           <span>Settings</span>
         </NavLink>
 
-        <button className="sidebar-link sidebar-logout">
+        <button
+          type="button"
+          className="sidebar-link sidebar-logout"
+          onClick={handleLogout}
+        >
           <LogOut size={19} />
           <span>Logout</span>
         </button>

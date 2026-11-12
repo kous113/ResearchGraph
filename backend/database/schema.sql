@@ -42,6 +42,20 @@ CREATE TABLE IF NOT EXISTS paper_relationships (
     CHECK (source_paper_id <> target_paper_id)
 );
 
+-- 5. Research gaps table
+CREATE TABLE IF NOT EXISTS research_gaps (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER UNIQUE NOT NULL
+        REFERENCES users(id) ON DELETE CASCADE,
+    gaps JSONB NOT NULL DEFAULT '[]'::jsonb,
+    source_paper_ids INTEGER[] NOT NULL DEFAULT '{}',
+    generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Index
+CREATE INDEX IF NOT EXISTS idx_research_gaps_user_id
+ON research_gaps(user_id);
+
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_papers_user_id
 ON papers(user_id);

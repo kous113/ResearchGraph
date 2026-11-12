@@ -178,7 +178,7 @@ function ResearchGraph() {
       )
       .map((relationship) => ({
         data: {
-          id: String(relationship.id),
+          id: `relationship-${relationship.id}`,
           source: String(relationship.source_paper_id),
           target: String(relationship.target_paper_id),
           type: relationship.relationship_type,

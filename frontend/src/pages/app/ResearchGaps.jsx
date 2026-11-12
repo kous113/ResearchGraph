@@ -1,5 +1,6 @@
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
 import {
   Lightbulb,
   Search,
@@ -9,127 +10,104 @@ import {
   BookOpen,
   FlaskConical,
   AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 
 import Sidebar from "../../components/layout/Sidebar";
 import Topbar from "../../components/layout/Topbar";
+
+import {
+  getAllPapers,
+  discoverResearchGaps,
+} from "../../services/paperService";
+
 import "../../styles/researchGaps.css";
 
-// Mock research gaps.
-// These examples will later be generated from actual paper analysis.
-const researchGaps = [
-  {
-    id: 1,
-    title: "Reducing Hallucinations in Large Language Models",
-    category: "Large Language Models",
-    description:
-      "Several papers discuss the limitations of large language models, particularly their tendency to generate inaccurate or unsupported information. More work is needed to improve factual reliability.",
-    reason:
-      "Existing approaches still struggle to consistently verify generated information, especially in specialized domains.",
-    direction:
-      "Explore retrieval-augmented generation, external knowledge verification and techniques for measuring factual consistency.",
-    papers: [
-      "A Survey on Large Language Models",
-      "Generative AI and Future Research Directions",
-    ],
-    limitations: [
-      "LLMs may generate incorrect information with high confidence.",
-      "Reliability remains challenging in domain-specific applications.",
-    ],
-    tag: "Reliability",
-  },
-  {
-    id: 2,
-    title: "Improving Generalization Across Different Text Domains",
-    category: "Natural Language Processing",
-    description:
-      "Research on text classification shows that models trained on one domain may not perform equally well on another domain.",
-    reason:
-      "Many approaches depend on domain-specific training data and may lose accuracy when applied to unfamiliar datasets.",
-    direction:
-      "Investigate domain adaptation, transfer learning and methods that reduce dependence on large labelled datasets.",
-    papers: [
-      "A Study on Text Classification Methods",
-      "Applications of NLP in Modern Systems",
-    ],
-    limitations: [
-      "Limited generalization across different domains.",
-      "Performance depends on the quality and availability of labelled data.",
-    ],
-    tag: "Generalization",
-  },
-  {
-    id: 3,
-    title: "Reducing Computational Costs of Transformer Models",
-    category: "Deep Learning",
-    description:
-      "Transformer-based models provide strong performance but can require substantial memory and computational resources.",
-    reason:
-      "High resource requirements can make it difficult to deploy these models in low-resource environments.",
-    direction:
-      "Explore model compression, efficient attention mechanisms, quantization and lightweight architectures.",
-    papers: [
-      "Transformer Architecture and Its Applications",
-      "A Survey on Large Language Models",
-    ],
-    limitations: [
-      "High computational and memory requirements.",
-      "Deployment can be difficult in resource-constrained environments.",
-    ],
-    tag: "Efficiency",
-  },
-  {
-    id: 4,
-    title: "Improving Interpretability of Deep Learning Models",
-    category: "Deep Learning",
-    description:
-      "Deep learning models can produce accurate predictions, but understanding why a model made a particular decision remains difficult.",
-    reason:
-      "Limited interpretability can reduce trust and make it harder to identify errors in model predictions.",
-    direction:
-      "Investigate explainable AI techniques, feature attribution and interpretable model architectures.",
-    papers: [
-      "Deep Learning Techniques for Text Analysis",
-      "A Survey on Large Language Models",
-    ],
-    limitations: [
-      "Limited interpretability of complex neural architectures.",
-      "Difficulties explaining individual model predictions.",
-    ],
-    tag: "Explainability",
-  },
-];
-
 function ResearchGaps() {
+  const [gaps, setGaps] = useState([]);
+  const [papersAnalyzed, setPapersAnalyzed] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
   const [expandedGap, setExpandedGap] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const categories = [
-    "All",
-    "Large Language Models",
-    "Natural Language Processing",
-    "Deep Learning",
-  ];
+  const loadResearchGaps = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const papers = await getAllPapers();
+      setPapersAnalyzed(papers.length);
+
+      if (papers.length < 2) {
+        setGaps([]);
+        setError("Upload at least 2 research papers to discover potential research gaps.");
+        return;
+      }
+
+      const result = await discoverResearchGaps();
+      setGaps(result.gaps || []);
+    } catch (err) {
+      setGaps([]);
+      setError(
+        err.response?.data?.message ||
+          "Unable to discover research gaps. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadResearchGaps();
+  }, []);
+
+  const categories = useMemo(() => {
+    return [
+      "All",
+      ...new Set(gaps.map((gap) => gap.category).filter(Boolean)),
+    ];
+  }, [gaps]);
+
+  const recurringLimitations = useMemo(() => {
+    const limitationCounts = {};
+
+    gaps.forEach((gap) => {
+      (gap.limitations || []).forEach((limitation) => {
+        const key = limitation.trim().toLowerCase();
+
+        if (key) {
+          limitationCounts[key] = (limitationCounts[key] || 0) + 1;
+        }
+      });
+    });
+
+    return Object.values(limitationCounts).filter(
+      (count) => count > 1
+    ).length;
+  }, [gaps]);
 
   const filteredGaps = useMemo(() => {
-    return researchGaps.filter((gap) => {
+    return gaps.filter((gap) => {
       const matchesCategory =
         activeCategory === "All" || gap.category === activeCategory;
 
       const searchText = searchTerm.toLowerCase();
 
       const matchesSearch =
-        gap.title.toLowerCase().includes(searchText) ||
-        gap.description.toLowerCase().includes(searchText) ||
-        gap.category.toLowerCase().includes(searchText);
+        (gap.title || "").toLowerCase().includes(searchText) ||
+        (gap.description || "").toLowerCase().includes(searchText) ||
+        (gap.category || "").toLowerCase().includes(searchText);
 
       return matchesCategory && matchesSearch;
     });
-  }, [searchTerm, activeCategory]);
+  }, [gaps, searchTerm, activeCategory]);
 
   const toggleExpanded = (gapId) => {
-    setExpandedGap((current) => (current === gapId ? null : gapId));
+    setExpandedGap((current) =>
+      current === gapId ? null : gapId
+    );
   };
 
   return (
@@ -138,7 +116,6 @@ function ResearchGaps() {
       <Topbar />
 
       <main className="dashboard-main research-gaps-main">
-        {/* Page Header */}
         <div className="research-gaps-header">
           <div>
             <h1>Research Gaps</h1>
@@ -147,9 +124,18 @@ function ResearchGaps() {
               across your research papers.
             </p>
           </div>
+
+          <button
+            type="button"
+            className="ai-compare-btn"
+            onClick={loadResearchGaps}
+            disabled={loading}
+          >
+            <RefreshCw size={17} />
+            {loading ? "Analysing Papers..." : "Discover Again"}
+          </button>
         </div>
 
-        {/* Summary */}
         <section className="gap-summary">
           <div className="gap-summary-icon">
             <Lightbulb size={25} />
@@ -158,13 +144,13 @@ function ResearchGaps() {
           <div>
             <h2>Discover what's missing in existing research</h2>
             <p>
-              Research gaps highlight unresolved problems, recurring
-              limitations and areas that may need further investigation.
+              AI analyses unresolved problems, recurring limitations
+              and unexplored areas across your uploaded papers to
+              suggest potential research directions.
             </p>
           </div>
         </section>
 
-        {/* Statistics */}
         <section className="gap-stats">
           <div className="gap-stat-card">
             <div className="gap-stat-icon blue">
@@ -172,7 +158,7 @@ function ResearchGaps() {
             </div>
             <div>
               <p>Potential Gaps</p>
-              <h3>08</h3>
+              <h3>{loading ? "..." : gaps.length}</h3>
             </div>
           </div>
 
@@ -182,7 +168,7 @@ function ResearchGaps() {
             </div>
             <div>
               <p>Recurring Limitations</p>
-              <h3>14</h3>
+              <h3>{loading ? "..." : recurringLimitations}</h3>
             </div>
           </div>
 
@@ -192,18 +178,17 @@ function ResearchGaps() {
             </div>
             <div>
               <p>Papers Analysed</p>
-              <h3>18</h3>
+              <h3>{papersAnalyzed}</h3>
             </div>
           </div>
         </section>
 
-        {/* Search and Filters */}
         <section className="gap-discovery-section">
           <div className="gap-discovery-heading">
             <div>
               <h2>Identified Research Opportunities</h2>
               <p>
-                Browse potential gaps and explore their supporting evidence.
+                Explore potential gaps and their supporting evidence.
               </p>
             </div>
           </div>
@@ -235,14 +220,38 @@ function ResearchGaps() {
             </div>
           </div>
 
-          {/* Research Gap Cards */}
-          <div className="research-gap-list">
-            {filteredGaps.length > 0 ? (
-              filteredGaps.map((gap) => {
-                const isExpanded = expandedGap === gap.id;
+          {loading ? (
+            <div className="gap-no-results">
+              <RefreshCw size={30} />
+              <h3>Analysing your research papers</h3>
+              <p>
+                AI is examining the papers to identify potential
+                research opportunities. This may take a little time.
+              </p>
+            </div>
+          ) : error ? (
+            <div className="gap-no-results">
+              <AlertCircle size={32} />
+              <h3>Research gap discovery unavailable</h3>
+              <p>{error}</p>
+              <button
+                type="button"
+                className="ai-compare-btn"
+                onClick={loadResearchGaps}
+              >
+                Try Again
+              </button>
+            </div>
+          ) : filteredGaps.length > 0 ? (
+            <div className="research-gap-list">
+              {filteredGaps.map((gap, index) => {
+                const isExpanded = expandedGap === index;
 
                 return (
-                  <article className="research-gap-card" key={gap.id}>
+                  <article
+                    className="research-gap-card"
+                    key={`${gap.title}-${index}`}
+                  >
                     <div className="research-gap-card-header">
                       <div className="gap-title-area">
                         <div className="gap-card-icon">
@@ -257,7 +266,9 @@ function ResearchGaps() {
                         </div>
                       </div>
 
-                      <span className="gap-type-tag">{gap.tag}</span>
+                      <span className="gap-type-tag">
+                        {gap.tag}
+                      </span>
                     </div>
 
                     <div className="gap-description">
@@ -271,10 +282,10 @@ function ResearchGaps() {
                       </div>
 
                       <div className="gap-paper-list">
-                        {gap.papers.map((paper, index) => (
-                          <span key={index}>
+                        {(gap.papers || []).map((paper, paperIndex) => (
+                          <span key={paper.id || paperIndex}>
                             <FileText size={14} />
-                            {paper}
+                            {paper.title}
                           </span>
                         ))}
                       </div>
@@ -297,9 +308,13 @@ function ResearchGaps() {
                           </h4>
 
                           <ul>
-                            {gap.limitations.map((limitation, index) => (
-                              <li key={index}>{limitation}</li>
-                            ))}
+                            {(gap.limitations || []).map(
+                              (limitation, limitationIndex) => (
+                                <li key={limitationIndex}>
+                                  {limitation}
+                                </li>
+                              )
+                            )}
                           </ul>
                         </div>
 
@@ -316,12 +331,12 @@ function ResearchGaps() {
                     <div className="research-gap-card-footer">
                       <span>
                         <FileText size={15} />
-                        {gap.papers.length} supporting papers
+                        {(gap.papers || []).length} supporting papers
                       </span>
 
                       <button
                         type="button"
-                        onClick={() => toggleExpanded(gap.id)}
+                        onClick={() => toggleExpanded(index)}
                       >
                         {isExpanded ? "Show Less" : "Explore Gap"}
                         <ArrowUpRight size={16} />
@@ -329,15 +344,19 @@ function ResearchGaps() {
                     </div>
                   </article>
                 );
-              })
-            ) : (
-              <div className="gap-no-results">
-                <Search size={32} />
-                <h3>No research gaps found</h3>
-                <p>Try another search term or category.</p>
-              </div>
-            )}
-          </div>
+              })}
+            </div>
+          ) : (
+            <div className="gap-no-results">
+              <Search size={32} />
+              <h3>No research gaps found</h3>
+              <p>
+                {gaps.length === 0
+                  ? "The uploaded papers did not provide enough evidence to identify potential research gaps."
+                  : "Try another search term or category."}
+              </p>
+            </div>
+          )}
         </section>
       </main>
     </div>

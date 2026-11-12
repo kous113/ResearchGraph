@@ -8,18 +8,58 @@ import RecentPapers from "../../components/common/RecentPapers";
 import ResearchActivity from "../../components/common/ResearchActivity";
 import QuickActions from "../../components/common/QuickActions";
 
-import { getAllPapers } from "../../services/paperService";
+import {
+  getAllPapers,
+  getPaperRelationships,
+  discoverResearchGaps,
+} from "../../services/paperService";
+
 import "../../styles/dashboard.css";
 
 function Dashboard() {
   const [papers, setPapers] = useState([]);
+  const [connections, setConnections] = useState(0);
+  const [gaps, setGaps] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const data = await getAllPapers();
-        setPapers(data);
+        // Fetch actual papers
+        const paperData = await getAllPapers();
+        setPapers(paperData);
+
+        // Fetch connections and research gaps independently
+        const [relationshipResult, gapResult] = await Promise.allSettled([
+          getPaperRelationships(),
+          paperData.length >= 2
+            ? discoverResearchGaps()
+            : Promise.resolve({ gaps: [] }),
+        ]);
+
+        if (relationshipResult.status === "fulfilled") {
+          const relationshipData = relationshipResult.value;
+
+          const relationshipList = Array.isArray(relationshipData)
+            ? relationshipData
+            : relationshipData?.relationships || [];
+
+          setConnections(relationshipList.length);
+        } else {
+          console.error(
+            "Dashboard connections error:",
+            relationshipResult.reason
+          );
+        }
+
+        if (gapResult.status === "fulfilled") {
+          setGaps(gapResult.value?.gaps?.length || 0);
+        } else {
+          console.error(
+            "Dashboard research gaps error:",
+            gapResult.reason
+          );
+        }
       } catch (error) {
         console.error("Dashboard data error:", error);
       } finally {
@@ -62,14 +102,14 @@ function Dashboard() {
 
           <StatsCard
             title="Connections"
-            value="0"
+            value={loading ? "..." : String(connections)}
             description="Relationships discovered"
             type="connections"
           />
 
           <StatsCard
             title="Potential Gaps"
-            value="0"
+            value={loading ? "..." : String(gaps)}
             description="Research opportunities identified"
             type="gaps"
           />

@@ -253,3 +253,34 @@ export async function getPaperRelationships(userId) {
 
   return result.rows;
 }
+
+
+// Save or refresh generated research gaps for a user.
+export async function saveResearchGaps(userId, gaps, sourcePaperIds) {
+  const result = await pool.query(
+    `INSERT INTO research_gaps
+       (user_id, gaps, source_paper_ids, generated_at)
+     VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+     ON CONFLICT (user_id)
+     DO UPDATE SET
+       gaps = EXCLUDED.gaps,
+       source_paper_ids = EXCLUDED.source_paper_ids,
+       generated_at = CURRENT_TIMESTAMP
+     RETURNING *`,
+    [userId, JSON.stringify(gaps), sourcePaperIds]
+  );
+
+  return result.rows[0];
+}
+
+// Retrieve previously generated research gaps.
+export async function getResearchGaps(userId) {
+  const result = await pool.query(
+    `SELECT *
+     FROM research_gaps
+     WHERE user_id = $1`,
+    [userId]
+  );
+
+  return result.rows[0] || null;
+}
