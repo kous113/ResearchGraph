@@ -1,0 +1,152 @@
+
+.register-page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: #ffffff;
+}
+
+/* Left information panel */
+.register-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 45px 9%;
+  background: #16345c;
+  color: #ffffff;
+}
+
+.register-brand {
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.register-info-content {
+  max-width: 480px;
+}
+
+.register-info-content h1 {
+  font-size: 42px;
+  line-height: 1.3;
+  margin-bottom: 22px;
+}
+
+.register-info-content p {
+  color: #c5d2e0;
+  font-size: 16px;
+  line-height: 1.8;
+}
+
+.register-info-footer {
+  color: #c5d2e0;
+  font-size: 13px;
+}
+
+/* Right registration form */
+.register-form-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 45px 50px;
+}
+
+.register-form-container {
+  width: 100%;
+  max-width: 420px;
+}
+
+.register-form-container h2 {
+  color: #16345c;
+  font-size: 32px;
+  margin-bottom: 10px;
+}
+
+.register-subtitle {
+  color: #64748b;
+  font-size: 15px;
+  margin-bottom: 28px;
+}
+
+.register-form {
+  display: flex;
+  flex-direction: column;
+  gap: 17px;
+}
+
+.register-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.register-form .form-group label {
+  color: #334155;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.register-form .form-group input {
+  width: 100%;
+  padding: 13px 15px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  outline: none;
+  font-size: 15px;
+  transition: border-color 0.3s ease;
+}
+
+.register-form .form-group input:focus {
+  border-color: #2563a6;
+}
+
+.terms-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.5;
+  margin-top: 3px;
+}
+
+.terms-checkbox input {
+  margin-top: 3px;
+  accent-color: #2563a6;
+}
+
+.register-submit-btn {
+  width: 100%;
+  padding: 14px;
+  background: #1d4f82;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.register-submit-btn:hover {
+  background: #163c65;
+}
+
+.login-prompt {
+  margin-top: 25px;
+  text-align: center;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.login-prompt a {
+  color: #2563a6;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.3s ease;
+}
+
+.login-prompt a:hover {
+  color: #16345c;
+}
