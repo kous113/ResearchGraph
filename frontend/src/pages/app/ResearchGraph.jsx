@@ -1,5 +1,12 @@
 
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+} from "react";
+
 import CytoscapeComponent from "react-cytoscapejs";
 
 import {
@@ -15,7 +22,11 @@ import {
 
 import Sidebar from "../../components/layout/Sidebar";
 import Topbar from "../../components/layout/Topbar";
-import { getAllPapers } from "../../services/paperService";
+
+import {
+  getAllPapers,
+  getPaperRelationships,
+} from "../../services/paperService";
 
 import "../../styles/researchGraph.css";
 
@@ -79,6 +90,8 @@ const graphStyles = [
 
 function ResearchGraph() {
   const [papers, setPapers] = useState([]);
+  const [relationships, setRelationships] = useState([]);
+
   const [selectedPaper, setSelectedPaper] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -90,28 +103,34 @@ function ResearchGraph() {
   });
 
   const cyRef = useRef(null);
+  const graphPapersRef = useRef([]);
 
-  // Fetch actual papers from PostgreSQL
+  // Fetch papers and their saved relationships.
   useEffect(() => {
-    const fetchPapers = async () => {
+    const fetchGraphData = async () => {
       try {
         setLoading(true);
         setError("");
 
-        const data = await getAllPapers();
-        setPapers(data);
+        const [paperData, relationshipData] = await Promise.all([
+          getAllPapers(),
+          getPaperRelationships(),
+        ]);
+
+        setPapers(paperData);
+        setRelationships(relationshipData);
       } catch (err) {
         console.error("Research graph error:", err);
-        setError("Failed to load research papers.");
+        setError("Failed to load research graph data.");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchPapers();
+    fetchGraphData();
   }, []);
 
-  // Convert database records into graph nodes
+  // Convert database records into graph nodes.
   const graphPapers = useMemo(() => {
     return papers.map((paper) => {
       const analysis =
@@ -136,9 +155,10 @@ function ResearchGraph() {
     });
   }, [papers]);
 
-  // Real nodes; relationship edges will be added through the backend later
-  const relationships = [];
+  // Keep the latest papers available to Cytoscape event handlers.
+  graphPapersRef.current = graphPapers;
 
+  // Generate actual graph nodes and edges.
   const elements = useMemo(() => {
     const nodes = graphPapers.map((paper) => ({
       data: {
@@ -147,44 +167,50 @@ function ResearchGraph() {
       },
     }));
 
+    const paperIds = new Set(graphPapers.map((paper) => paper.id));
+
     const edges = relationships
-      .filter((relationship) => filters[relationship.type])
+      .filter(
+        (relationship) =>
+          filters[relationship.relationship_type] &&
+          paperIds.has(String(relationship.source_paper_id)) &&
+          paperIds.has(String(relationship.target_paper_id))
+      )
       .map((relationship) => ({
         data: {
-          id: relationship.id,
-          source: relationship.source,
-          target: relationship.target,
-          type: relationship.type,
+          id: String(relationship.id),
+          source: String(relationship.source_paper_id),
+          target: String(relationship.target_paper_id),
+          type: relationship.relationship_type,
+          description: relationship.description,
         },
       }));
 
     return [...nodes, ...edges];
-  }, [graphPapers, filters]);
+  }, [graphPapers, relationships, filters]);
 
-  const handleGraphReady = useCallback(
-    (cy) => {
-      if (cyRef.current === cy) return;
+  // Handle node selection.
+  const handleGraphReady = useCallback((cy) => {
+    if (cyRef.current === cy) return;
 
-      cyRef.current = cy;
+    cyRef.current = cy;
 
-      cy.on("tap", "node", (event) => {
-        const paperId = event.target.id();
+    cy.on("tap", "node", (event) => {
+      const paperId = event.target.id();
 
-        const paper = graphPapers.find(
-          (item) => item.id === paperId
-        );
+      const paper = graphPapersRef.current.find(
+        (item) => item.id === paperId
+      );
 
-        setSelectedPaper(paper || null);
-      });
+      setSelectedPaper(paper || null);
+    });
 
-      cy.on("tap", (event) => {
-        if (event.target === cy) {
-          setSelectedPaper(null);
-        }
-      });
-    },
-    [graphPapers]
-  );
+    cy.on("tap", (event) => {
+      if (event.target === cy) {
+        setSelectedPaper(null);
+      }
+    });
+  }, []);
 
   const toggleFilter = (type) => {
     setFilters((current) => ({
@@ -245,7 +271,7 @@ function ResearchGraph() {
             <Network size={18} />
             <span>{papers.length} Papers</span>
             <span className="graph-count-divider">|</span>
-            <span>0 Connections</span>
+            <span>{relationships.length} Connections</span>
           </div>
         </div>
 
@@ -274,7 +300,7 @@ function ResearchGraph() {
 
             <div className="graph-canvas">
               {loading ? (
-                <p>Loading your research papers...</p>
+                <p>Loading your research graph...</p>
               ) : error ? (
                 <p>{error}</p>
               ) : papers.length === 0 ? (

@@ -53,3 +53,13 @@ export const getPaperRelationships = async () => {
 
   return response.data.relationships;
 };
+
+
+export const comparePapers = async (paperIds) => {
+  const response = await API.post("/compare-papers", {
+    userId: USER_ID,
+    paperIds,
+  });
+
+  return response.data.comparison;
+};
